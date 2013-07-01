@@ -85,7 +85,14 @@ begin
 
   if sudo_check.include? cmd
     if Process.uid.zero? and not File.stat(HOMEBREW_BREW_FILE).uid.zero?
-      raise "Cowardly refusing to `sudo brew #{cmd}`\n#{SUDO_BAD_ERRMSG}"
+      fork do
+        brew_file = File.stat(HOMEBREW_BREW_FILE)
+        brew_file_owner = Etc.getpwuid(brew_file.uid).name
+        brew_file_group = Etc.getgrgid(brew_file.gid).name
+        warn "Cowardly running as #{brew_file_owner} rather than root."
+        Process::UID.change_privilege(brew_file_owner)
+        Process::GID.change_privilege(brew_file_group)
+      end
     end
   end
 
